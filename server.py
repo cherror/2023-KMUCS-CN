@@ -33,12 +33,12 @@ def handle_request(client_socket, request):
     if method == 'GET':
         if path == '/':
             content = 'Hello, World!'
-            response = f'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {len(content)}\r\nDate: {datetime.datetime.now()}\r\n\r\n{content}'
+            response = f'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {len(content)}\r\nDate: {datetime.datetime.now():%Y-%m-%d %H:%M:%S}\r\n\r\n{content}'
         else:
             file_content = read_file(path[1:])  # Remove leading '/'
             if file_content is not None:
                 content = generate_html(file_content)
-                response = f'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {len(content)}\r\nDate: {datetime.datetime.now()}\r\n\r\n{content}'
+                response = f'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {len(content)}\r\nDate: {datetime.datetime.now():%Y-%m-%d %H:%M:%S}\r\n\r\n{content}'
             else:
                 response = 'HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n'
     elif method == 'POST':
@@ -53,7 +53,7 @@ def handle_request(client_socket, request):
         else:
             body = request.split('\r\n\r\n')[1]
             if len(body) == content_length:
-                response = f'HTTP/1.1 201 Created\r\nLocation: /new-resource\r\nContent-Length: 0\r\nDate: {datetime.datetime.now()}\r\n'
+                response = f'HTTP/1.1 201 Created\r\nLocation: /new-resource\r\nContent-Length: 0\r\nDate: {datetime.datetime.now():%Y-%m-%d %H:%M:%S}\r\n'
             else:
                 response = 'HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n'
     elif method == 'PUT':
@@ -68,15 +68,24 @@ def handle_request(client_socket, request):
         else:
             body = request.split('\r\n\r\n')[1]
             if len(body) == content_length:
-                response = f'HTTP/1.1 200 OK\r\nContent-Length: 0\r\nDate: {datetime.datetime.now()}\r\n'
+                response = f'HTTP/1.1 200 OK\r\nContent-Length: 0\r\nDate: {datetime.datetime.now():%Y-%m-%d %H:%M:%S}\r\n'
             else:
                 response = 'HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n'
     elif method == 'HEAD':
-        response = 'HTTP/1.1 200 OK\r\nContent-Length: 0\r\nDate: {datetime.datetime.now()}\r\n'
+        if path == '/':
+            content = ''
+            response = f'HTTP/1.1 200 OK\r\nContent-Length: {len(content)}\r\nDate: {datetime.datetime.now():%Y-%m-%d %H:%M:%S}\r\n\r\n'
+        else:
+            file_content = read_file(path[1:])  # Remove leading '/'
+            if file_content is not None:
+                content = ''
+                response = f'HTTP/1.1 200 OK\r\nContent-Length: {len(content)}\r\nDate: {datetime.datetime.now():%Y-%m-%d %H:%M:%S}\r\n\r\n'
+            else:
+                response = 'HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n'
     else:
         response = 'HTTP/1.1 501 Not Implemented\r\nContent-Length: 0\r\n'
 
-    send_response(client_socket,response)
+    send_response(client_socket, response)
 
 # 서버 소켓을 생성
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
