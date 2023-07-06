@@ -1,4 +1,82 @@
 import socket
+import datetime
+import os
+
+def send_response(client_socket, response):
+    client_socket.sendall(response.encode())
+
+def read_file(path):
+    try:
+        with open(path, 'r') as file:
+            content = file.read()
+        return content
+    except FileNotFoundError:
+        return None
+
+def generate_html(content):
+    html = f'''
+    <html>
+    <head>
+        <title>Server Response</title>
+    </head>
+    <body>
+        <h1>{content}</h1>
+    </body>
+    </html>
+    '''
+    return html
+
+def handle_request(client_socket, request):
+    request_lines = request.split('\r\n')
+    method, path, _ = request_lines[0].split()
+
+    if method == 'GET':
+        if path == '/':
+            content = 'Hello, World!'
+            response = f'HTTP/1.1 200 OK\r\nContent-Length: {len(content)}\r\n\r\n{content}'
+        else:
+            file_content = read_file(path[1:])  # Remove leading '/'
+            if file_content is not None:
+                content = generate_html(file_content)
+                response = f'HTTP/1.1 200 OK\r\nContent-Length: {len(content)}\r\n\r\n{content}'
+            else:
+                response = 'HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n'
+    elif method == 'POST':
+        content_length = None
+        for line in request_lines:
+            if line.startswith('Content-Length:'):
+                content_length = int(line.split()[1])
+                break
+        
+        if content_length is None:
+            response = 'HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n'
+        else:
+            body = request.split('\r\n\r\n')[1]
+            if len(body) == content_length:
+                response = 'HTTP/1.1 201 Created\r\nLocation: /new-resource\r\nContent-Length: 0\r\n'
+            else:
+                response = 'HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n'
+    elif method == 'PUT':
+        content_length = None
+        for line in request_lines:
+            if line.startswith('Content-Length:'):
+                content_length = int(line.split()[1])
+                break
+        
+        if content_length is None:
+            response = 'HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n'
+        else:
+            body = request.split('\r\n\r\n')[1]
+            if len(body) == content_length:
+                response = 'HTTP/1.1 200 OK\r\nContent-Length: 0\r\n'
+            else:
+                response = 'HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n'
+    elif method == 'HEAD':
+        response = 'HTTP/1.1 200 OK\r\nContent-Length: 0\r\n'
+    else:
+        response = 'HTTP/1.1 501 Not Implemented\r\nContent-Length: 0\r\n'
+
+    send_response(client_socket, response)
 
 # 서버 소켓을 생성합니다.
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -23,11 +101,7 @@ while True:
     data = client_socket.recv(1024).decode()
 
     # 수신된 데이터를 처리합니다.
-    # TODO: 요청에 따라 적절한 응답을 구성합니다.
-
-    # 클라이언트에 응답을 전송합니다.
-    response = 'HTTP/1.1 200 OK\r\nContent-Length: 12\r\n\r\nHello World!'
-    client_socket.sendall(response.encode())
+    handle_request(client_socket, data)
 
     # 클라이언트와의 연결을 닫습니다.
     client_socket.close()
